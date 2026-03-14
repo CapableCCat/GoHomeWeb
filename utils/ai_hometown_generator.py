@@ -1,11 +1,20 @@
 """
 AI 思乡话语生成器
-调用大模型 API 生成具有地方特色的思乡话语和诗句
+支持多种大模型 API：Anthropic Claude、阿里云百炼、OpenAI 等
 """
 
 import requests
 from typing import Optional, List
+from enum import Enum
 import json
+
+
+class ModelProvider(Enum):
+    """模型提供商"""
+    ANTHROPIC = "anthropic"
+    ALIYUN = "aliyun"
+    OPENAI = "openai"
+    CUSTOM = "custom"
 
 
 class AIHometownGenerator:
@@ -85,7 +94,13 @@ class AIHometownGenerator:
         '内蒙古': '蒙古语风格',
     }
 
-    def __init__(self, api_key: str, base_url: str = None, model: str = None):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = None,
+        model: str = None,
+        provider: str = None
+    ):
         """
         初始化生成器
 
@@ -93,10 +108,32 @@ class AIHometownGenerator:
             api_key: API 密钥
             base_url: API 基础 URL
             model: 模型名称
+            provider: 模型提供商 (anthropic/aliyun/openai/custom)
         """
         self.api_key = api_key
-        self.base_url = base_url or 'https://api.anthropic.com/v1'
-        self.model = model or 'claude-sonnet-4-20250514'
+        self.base_url = base_url or ''
+        self.model = model or ''
+        self.provider = self._detect_provider(provider, base_url)
+
+    def _detect_provider(self, provider: str = None, base_url: str = None) -> ModelProvider:
+        """根据配置检测模型提供商"""
+        if provider:
+            try:
+                return ModelProvider(provider.lower())
+            except ValueError:
+                pass
+
+        # 根据 base_url 自动检测
+        if base_url:
+            if 'anthropic' in base_url.lower():
+                return ModelProvider.ANTHROPIC
+            elif 'aliyuncs' in base_url.lower() or 'dashscope' in base_url.lower():
+                return ModelProvider.ALIYUN
+            elif 'openai' in base_url.lower():
+                return ModelProvider.OPENAI
+
+        # 默认使用 Anthropic 格式
+        return ModelProvider.CUSTOM
 
     def _get_dialect(self, location: str) -> str:
         """根据地点获取方言"""
@@ -105,16 +142,19 @@ class AIHometownGenerator:
                 return dialect
         return '普通话'
 
-    def _call_api(self, prompt: str) -> Optional[str]:
-        """
-        调用大模型 API
+    def _build_prompt(self, location: str, dialect: str, category: str = 'daily', custom_prompt: str = None) -> str:
+        """构建提示词"""
+        if custom_prompt:
+            return custom_prompt.format(dialect=dialect, location=location)
 
-        Args:
-            prompt: 提示词
+        if category in self.PROMPT_TEMPLATES:
+            template = self.PROMPT_TEMPLATES[category]
+            return template['template'].format(dialect=dialect, location=location)
 
-        Returns:
-            生成的文本，失败返回 None
-        """
+        return f'请用{dialect}方言风格，写一句关于思乡的话语。家乡地点：{location}。要求：温馨感人，口语化。'
+
+    def _call_anthropic_api(self, prompt: str) -> Optional[str]:
+        """调用 Anthropic Claude API"""
         headers = {
             'Content-Type': 'application/json',
             'x-api-key': self.api_key,
@@ -122,26 +162,81 @@ class AIHometownGenerator:
         }
 
         data = {
-            'model': self.model,
+            'model': self.model or 'claude-sonnet-4-20250514',
             'max_tokens': 100,
-            'messages': [
-                {
-                    'role': 'user',
-                    'content': prompt
-                }
-            ]
+            'messages': [{'role': 'user', 'content': prompt}]
         }
 
+        url = f'{self.base_url}/messages' if self.base_url else 'https://api.anthropic.com/v1/messages'
+
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        return result.get('content', [{}])[0].get('text', '')
+
+    def _call_aliyun_api(self, prompt: str) -> Optional[str]:
+        """调用阿里云百炼 API"""
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.api_key}'
+        }
+
+        data = {
+            'model': self.model or 'qwen-plus',
+            'input': {'message': prompt},
+            'parameters': {'max_tokens': 100}
+        }
+
+        url = f'{self.base_url}/compatible-mode/v1/chat/completions' if self.base_url else 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        return result.get('choices', [{}])[0].get('message', {}).get('content', '')
+
+    def _call_openai_api(self, prompt: str) -> Optional[str]:
+        """调用 OpenAI 兼容 API"""
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.api_key}'
+        }
+
+        data = {
+            'model': self.model or 'gpt-3.5-turbo',
+            'max_tokens': 100,
+            'messages': [{'role': 'user', 'content': prompt}]
+        }
+
+        url = f'{self.base_url}/chat/completions' if self.base_url else 'https://api.openai.com/v1/chat/completions'
+
+        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        return result.get('choices', [{}])[0].get('message', {}).get('content', '')
+
+    def _call_custom_api(self, prompt: str) -> Optional[str]:
+        """调用自定义 API（默认使用 OpenAI 兼容格式）"""
+        return self._call_openai_api(prompt)
+
+    def _call_api(self, prompt: str) -> Optional[str]:
+        """
+        调用大模型 API（根据提供商自动选择）
+
+        Args:
+            prompt: 提示词
+
+        Returns:
+            生成的文本，失败返回 None
+        """
         try:
-            response = requests.post(
-                f'{self.base_url}/messages',
-                headers=headers,
-                json=data,
-                timeout=30
-            )
-            response.raise_for_status()
-            result = response.json()
-            return result.get('content', [{}])[0].get('text', '')
+            if self.provider == ModelProvider.ANTHROPIC:
+                return self._call_anthropic_api(prompt)
+            elif self.provider == ModelProvider.ALIYUN:
+                return self._call_aliyun_api(prompt)
+            elif self.provider == ModelProvider.OPENAI:
+                return self._call_openai_api(prompt)
+            else:
+                return self._call_custom_api(prompt)
         except requests.exceptions.RequestException as e:
             print(f"API 调用失败：{e}")
             return None
@@ -149,7 +244,12 @@ class AIHometownGenerator:
             print(f"解析响应失败：{e}")
             return None
 
-    def generate(self, location: str, category: str = 'daily', custom_prompt: str = None) -> Optional[dict]:
+    def generate(
+        self,
+        location: str,
+        category: str = 'daily',
+        custom_prompt: str = None
+    ) -> Optional[dict]:
         """
         生成思乡话语
 
@@ -162,19 +262,10 @@ class AIHometownGenerator:
             包含生成结果和元数据的字典
         """
         dialect = self._get_dialect(location)
-
-        if custom_prompt:
-            prompt = custom_prompt.format(dialect=dialect, location=location)
-        elif category in self.PROMPT_TEMPLATES:
-            template = self.PROMPT_TEMPLATES[category]
-            prompt = template['template'].format(dialect=dialect, location=location)
-        else:
-            prompt = f'请用{dialect}方言风格，写一句关于思乡的话语。家乡地点：{location}。要求：温馨感人，口语化。'
-
+        prompt = self._build_prompt(location, dialect, category, custom_prompt)
         result = self._call_api(prompt)
 
         if result:
-            # 清理结果，去除多余空白和引号
             result = result.strip().strip('"\'""')
             return {
                 'content': result,
@@ -182,6 +273,49 @@ class AIHometownGenerator:
                 'dialect': dialect,
                 'location': location,
                 'category_key': category
+            }
+        return None
+
+    def generate_for_checkin(
+        self,
+        user_info: dict
+    ) -> Optional[dict]:
+        """
+        为签到打卡生成思乡话语（根据用户信息自动生成）
+
+        Args:
+            user_info: 用户信息，包含 hometown, current_city 等
+
+        Returns:
+            生成结果
+        """
+        hometown = user_info.get('hometown', '')
+        current_city = user_info.get('current_city', '')
+
+        if not hometown:
+            return None
+
+        dialect = self._get_dialect(hometown)
+
+        # 构建综合提示词，结合用户信息
+        prompt = f'''请用{dialect}方言风格，写一句温馨的日常问候语。
+家乡：{hometown}
+当前所在城市：{current_city or '外地'}
+
+要求：
+- 口语化，像家人之间的对话
+- 体现对游子的关怀
+- 20 字以内'''
+
+        result = self._call_api(prompt)
+
+        if result:
+            result = result.strip().strip('"\'""')
+            return {
+                'content': result,
+                'category': 'AI 生成',
+                'dialect': dialect,
+                'location': hometown
             }
         return None
 

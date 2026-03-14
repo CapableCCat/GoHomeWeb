@@ -17,7 +17,7 @@
 - **思乡话语**: 内置 20 条思乡话语，打卡后自动生成
 - **自定义话语**: 用户可添加自己的思乡话语
 - **分享功能**: 生成分享文案，一键复制
-- **AI 思乡话语生成**: 接入 Claude API，根据家乡地址和方言风格生成个性化思乡话语
+- **AI 思乡话语生成**: 支持多模型（Claude/通义千问/OpenAI 等），签到时根据用户家乡自动生成方言风格思乡话语
 
 ## 技术栈
 
@@ -43,10 +43,27 @@ pixi install
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，填入你的 Anthropic API Key：
+编辑 `.env` 文件，填入你的 API 配置。支持多种模型提供商：
 
+**Anthropic Claude:**
 ```
 AI_API_KEY=sk-ant-xxxxx
+AI_API_BASE_URL=https://api.anthropic.com/v1
+AI_MODEL=claude-sonnet-4-20250514
+```
+
+**阿里云百炼（通义千问）:**
+```
+AI_API_KEY=sk-xxxxx
+AI_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+AI_MODEL=qwen-plus
+```
+
+**OpenAI:**
+```
+AI_API_KEY=sk-xxxxx
+AI_API_BASE_URL=https://api.openai.com/v1
+AI_MODEL=gpt-4o-mini
 ```
 
 ### 3. 启动应用
@@ -111,7 +128,28 @@ HomeSignin/
 
 ## AI 思乡话语生成
 
-AI 生成功能支持以下分类：
+### 多模型支持
+
+AI 生成功能支持多种大模型 API，可通过配置切换：
+
+| 提供商 | 模型示例 | 配置方式 |
+|--------|----------|----------|
+| Anthropic | claude-sonnet-4-20250514 | 原生支持 |
+| 阿里云百炼 | qwen-plus | 兼容模式 |
+| OpenAI | gpt-4o-mini | 原生支持 |
+| 其他 | 任意 OpenAI 兼容 API | 自定义配置 |
+
+### 签到自动集成
+
+每次签到时，系统会：
+1. 读取用户的家乡信息
+2. 自动匹配方言风格（如四川话、粤语等）
+3. 调用 AI 生成具有地方特色的思乡话语
+4. 如果没有配置 API，则使用内置话语
+
+### 生成分类
+
+手动生成功能支持以下分类：
 - **饮食关怀**: 用家乡方言风格生成关于美食的关怀话语
 - **天气问候**: 结合家乡天气的问候语
 - **节日思念**: 节日思乡话语
