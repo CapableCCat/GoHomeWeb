@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}AI 思乡话语生成{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">AI 思乡话语生成器</h1>
+        <p class="text-gray-600">输入你的家乡，AI 将用当地方言风格生成温馨的思乡话语</p>
+    </div>
+
+    {% if not has_api_key %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <p class="text-yellow-800">
+            <strong>提示：</strong> 请先配置 AI_API_KEY 环境变量才能使用此功能。
+        </p>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 输入区域 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">生成设置</h2>
+
+            <form id="generateForm" class="space-y-4">
+                <div>
+                    <label for="location" class="block text-sm font-medium text-gray-700 mb-1">
+                        家乡地点 <span class="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        id="location"
+                        name="location"
+                        placeholder="例如：四川成都、北京、广东广州"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                    >
+                </div>
+
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
+                        话语类型
+                    </label>
+                    <select
+                        id="category"
+                        name="category"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        {% for cat in categories %}
+                        <option value="{{ cat.key }}">{{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="custom_prompt" class="block text-sm font-medium text-gray-700 mb-1">
+                        自定义提示词（可选）
+                    </label>
+                    <textarea
+                        id="custom_prompt"
+                        name="custom_prompt"
+                        rows="3"
+                        placeholder="留空则使用内置提示词模板。可用变量：{dialect}、{location}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    ></textarea>
+                </div>
+
+                <div class="flex gap-3">
+                    <button
+                        type="submit"
+                        id="generateBtn"
+                        class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                        {% if not has_api_key %}disabled{% endif %}
+                    >
+                        生成
+                    </button>
+                    <button
+                        type="button"
+                        id="batchGenerateBtn"
+                        class="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                        {% if not has_api_key %}disabled{% endif %}
+                    >
+                        批量生成
+                    </button>
+                </div>
+            </form>
+
+            <!-- 预设提示词说明 -->
+            <div class="mt-6 pt-4 border-t border-gray-200">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">内置提示词类型：</h3>
+                <div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                    <div><span class="text-blue-600">•</span> 饮食关怀：家乡美食关怀</div>
+                    <div><span class="text-blue-600">•</span> 天气问候：结合天气问候</div>
+                    <div><span class="text-blue-600">•</span> 节日思念：节日思乡话语</div>
+                    <div><span class="text-blue-600">•</span> 日常问候：日常思乡问候</div>
+                    <div><span class="text-blue-600">•</span> 思乡诗句：思乡诗句顺口溜</div>
+                    <div><span class="text-blue-600">•</span> 童年回忆：童年家乡回忆</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果区域 -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">生成结果</h2>
+
+            <div id="resultContainer" class="hidden">
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 mb-4">
+                    <div class="flex items-start justify-between mb-2">
+                        <span id="resultCategory" class="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"></span>
+                        <span id="resultDialect" class="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded"></span>
+                    </div>
+                    <p id="resultContent" class="text-lg text-gray-800 font-medium leading-relaxed"></p>
+                    <p id="resultLocation" class="text-sm text-gray-500 mt-3"></p>
+                </div>
+
+                <div class="flex gap-2">
+                    <button
+                        id="saveBtn"
+                        class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors text-sm"
+                    >
+                        保存到收藏
+                    </button>
+                    <button
+                        id="copyBtn"
+                        class="flex-1 bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors text-sm"
+                    >
+                        复制
+                    </button>
+                </div>
+            </div>
+
+            <div id="emptyState" class="text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                </svg>
+                <p class="mt-2 text-gray-500">输入家乡地点，点击生成按钮</p>
+            </div>
+
+            <div id="loadingState" class="hidden text-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p class="mt-4 text-gray-600">正在生成思乡话语...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量生成结果 -->
+    <div id="batchResultContainer" class="hidden mt-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">批量生成结果</h2>
+                <button id="closeBatchBtn" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="batchResults" class="space-y-3"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentResult = null;
+
+document.getElementById('generateForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await generateSingle();
+});
+
+document.getElementById('batchGenerateBtn').addEventListener('click', async () => {
+    const location = document.getElementById('location').value.trim();
+    if (!location) {
+        alert('请输入家乡地点');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('location', location);
+
+    showLoading();
+
+    try {
+        const response = await fetch('/ai-hometown/generate-batch', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            showBatchResults(data.data);
+        } else {
+            alert(data.error || '生成失败');
+        }
+    } catch (error) {
+        alert('请求失败：' + error.message);
+    } finally {
+        hideLoading();
+    }
+});
+
+document.getElementById('saveBtn').addEventListener('click', async () => {
+    if (!currentResult) return;
+
+    const formData = new FormData();
+    formData.append('content', currentResult.content);
+    formData.append('category', currentResult.category);
+
+    try {
+        const response = await fetch('/ai-hometown/save', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            alert('已保存到收藏！');
+        } else {
+            alert(data.error || '保存失败');
+        }
+    } catch (error) {
+        alert('请求失败：' + error.message);
+    }
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+    if (!currentResult) return;
+
+    navigator.clipboard.writeText(currentResult.content).then(() => {
+        alert('已复制到剪贴板！');
+    }).catch(() => {
+        alert('复制失败');
+    });
+});
+
+document.getElementById('closeBatchBtn').addEventListener('click', () => {
+    document.getElementById('batchResultContainer').classList.add('hidden');
+});
+
+async function generateSingle() {
+    const location = document.getElementById('location').value.trim();
+    const category = document.getElementById('category').value;
+    const customPrompt = document.getElementById('custom_prompt').value.trim();
+
+    if (!location) {
+        alert('请输入家乡地点');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('location', location);
+    formData.append('category', category);
+    formData.append('custom_prompt', customPrompt);
+
+    showLoading();
+
+    try {
+        const response = await fetch('/ai-hometown/generate', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            showResult(data.data);
+        } else {
+            alert(data.error || '生成失败');
+        }
+    } catch (error) {
+        alert('请求失败：' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function showLoading() {
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('resultContainer').classList.add('hidden');
+    document.getElementById('loadingState').classList.remove('hidden');
+}
+
+function hideLoading() {
+    document.getElementById('loadingState').classList.add('hidden');
+}
+
+function showResult(result) {
+    currentResult = result;
+    document.getElementById('resultCategory').textContent = result.category;
+    document.getElementById('resultDialect').textContent = result.dialect;
+    document.getElementById('resultContent').textContent = result.content;
+    document.getElementById('resultLocation').textContent = `家乡：${result.location}`;
+
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('resultContainer').classList.remove('hidden');
+    document.getElementById('batchResultContainer').classList.add('hidden');
+}
+
+function showBatchResults(results) {
+    const container = document.getElementById('batchResults');
+    container.innerHTML = '';
+
+    results.forEach((result, index) => {
+        const div = document.createElement('div');
+        div.className = 'border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors';
+        div.innerHTML = `
+            <div class="flex justify-between items-start mb-2">
+                <span class="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">${result.category}</span>
+                <span class="text-xs text-gray-500">${result.dialect}</span>
+            </div>
+            <p class="text-gray-800 font-medium">${result.content}</p>
+            <button class="save-batch-btn mt-2 text-sm text-blue-600 hover:text-blue-800" data-index="${index}">
+                保存
+            </button>
+        `;
+        container.appendChild(div);
+    });
+
+    // 批量保存按钮事件
+    container.querySelectorAll('.save-batch-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const index = parseInt(btn.dataset.index);
+            const result = results[index];
+
+            const formData = new FormData();
+            formData.append('content', result.content);
+            formData.append('category', result.category);
+
+            try {
+                const response = await fetch('/ai-hometown/save', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('已保存到收藏！');
+                } else {
+                    alert(data.error || '保存失败');
+                }
+            } catch (error) {
+                alert('请求失败：' + error.message);
+            }
+        });
+    });
+
+    document.getElementById('batchResultContainer').classList.remove('hidden');
+}
+</script>
+{% endblock %}
