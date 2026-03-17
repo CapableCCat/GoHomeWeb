@@ -1,0 +1,25 @@
+services:
+  # Backend API service
+  - type: web
+    name: homesignin-api
+    env: python
+    region: oregon
+    plan: free
+    branch: main
+    buildCommand: "pip install -r requirements.txt -r requirements-prod.txt"
+    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_API_BASE_URL
+        sync: false
+      - key: AI_MODEL
+        sync: false
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1

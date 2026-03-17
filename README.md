@@ -214,6 +214,114 @@ AI 生成功能支持多种大模型 API，可通过配置切换：
 - [ ] 家庭群组成员管理（添加多个家庭成员）
 - [ ] 签到历史记录页面
 
+## 部署指南
+
+### 方案一：GitHub Pages + Render（推荐）
+
+将前端部署到 GitHub Pages，后端部署到 Render 云平台（免费额度）。
+
+#### 1. 部署后端到 Render
+
+**步骤：**
+
+1. 访问 [render.com](https://render.com) 并注册账号
+
+2. 点击 "New +" → "Web Service"
+
+3. 连接你的 GitHub 仓库，选择 `GoHome` 项目
+
+4. 配置如下：
+   - **Name**: `homesignin-api`
+   - **Branch**: `main`
+   - **Root Directory**: 留空
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt -r requirements-prod.txt`
+   - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT`
+
+5. 设置环境变量（在 Render 控制台）：
+   ```
+   PORT=5001
+   SECRET_KEY=<生成一个随机密钥>
+   AI_API_KEY=<你的 AI API 密钥>（可选）
+   AI_API_BASE_URL=<你的 AI API 地址>（可选）
+   AI_MODEL=<你使用的模型>（可选）
+   ```
+
+6. 点击 "Create Web Service"，等待部署完成
+
+7. 部署完成后，你会得到一个类似 `https://homesignin-api.onrender.com` 的 URL
+
+#### 2. 配置前端并部署到 GitHub Pages
+
+**步骤：**
+
+1. 在 `frontend/.env` 文件中配置后端 API 地址：
+   ```
+   VITE_API_BASE_URL=https://homesignin-api.onrender.com
+   ```
+
+2. 构建前端：
+   ```bash
+   cd frontend
+   npm install
+   npm run build
+   ```
+
+3. 在 GitHub 仓库页面，进入 **Settings** → **Pages**
+
+4. 在 **Source** 下拉框选择 **GitHub Actions**
+
+5. 提交代码到 `main` 分支，GitHub Actions 会自动构建并部署
+
+6. 部署完成后，访问 `https://<你的用户名>.github.io/GoHome/` 即可使用
+
+#### 3. 配置 CORS（重要）
+
+由于前端和后端分离，需要在后端添加 CORS 支持。编辑 `app.py`：
+
+```python
+from flask_cors import CORS
+
+def create_app():
+    app = Flask(__name__)
+    # ...
+    CORS(app, supports_credentials=True)
+    # ...
+```
+
+### 方案二：Docker 一键部署
+
+如果你有支持 Docker 的服务器，可以使用 Docker 部署。
+
+**构建镜像：**
+
+```bash
+docker build -t homesignin .
+```
+
+**运行容器：**
+
+```bash
+docker run -d -p 5001:5001 -v $(pwd)/data:/app/data -e SECRET_KEY=your-secret-key homesignin
+```
+
+### 方案三：单机部署（开发环境）
+
+适合本地开发或内网使用。
+
+**启动后端：**
+```bash
+pixi run dev
+```
+
+**启动前端（新终端）：**
+```bash
+cd frontend
+npm run dev
+```
+
+访问 http://localhost:3000
+
 
 ## License
 

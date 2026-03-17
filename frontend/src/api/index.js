@@ -1,8 +1,11 @@
 import axios from 'axios'
 
+// 从环境变量读取 API 基础 URL（生产环境使用）
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+
 // 创建 axios 实例
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE_URL + '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
