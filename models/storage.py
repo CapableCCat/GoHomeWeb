@@ -59,6 +59,15 @@ class UserStorage(JSONStorage):
         UserStorage.save_all(users)
         return user_data
 
+    @staticmethod
+    def update(user_id, user_data):
+        users = UserStorage.get_all()
+        if str(user_id) in users:
+            users[str(user_id)].update(user_data)
+            UserStorage.save_all(users)
+            return users[str(user_id)]
+        return None
+
 
 class CheckinStorage(JSONStorage):
     """签到数据存储"""

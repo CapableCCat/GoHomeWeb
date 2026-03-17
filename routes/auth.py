@@ -24,6 +24,10 @@ def register():
         hometown = request.form.get('hometown', '').strip()
         current_city = request.form.get('current_city', '').strip()
         leave_home_date = request.form.get('leave_home_date', '')
+        # 家人配置
+        family_role = request.form.get('family_role', '妈妈')
+        nickname = request.form.get('nickname', '').strip()
+        tone_style = request.form.get('tone_style', '唠叨型')
 
         # 验证输入
         if not username or not password:
@@ -51,7 +55,10 @@ def register():
             'hometown': hometown,
             'current_city': current_city,
             'leave_home_date': leave_home_date,
-            'created_at': datetime.now().isoformat()
+            'created_at': datetime.now().isoformat(),
+            'family_role': family_role,
+            'nickname': nickname,
+            'tone_style': tone_style,
         }
         created_user = UserStorage.create(user_data)
 

@@ -319,6 +319,69 @@ class AIHometownGenerator:
             }
         return None
 
+    def generate_family_greeting(
+        self,
+        user_info: dict
+    ) -> Optional[dict]:
+        """
+        生成家人问候语（AI 扮演家人角色给用户发送问候）
+
+        Args:
+            user_info: 用户信息，包含 hometown, family_role, nickname, tone_style 等
+
+        Returns:
+            生成结果
+        """
+        hometown = user_info.get('hometown', '')
+        family_role = user_info.get('family_role', '妈妈')
+        nickname = user_info.get('nickname', '娃')
+        tone_style = user_info.get('tone_style', '唠叨型')
+        current_city = user_info.get('current_city', '')
+
+        if not hometown:
+            return None
+
+        dialect = self._get_dialect(hometown)
+
+        # 语气风格提示词
+        tone_prompts = {
+            '唠叨型': '语气要唠叨啰嗦，像妈妈一样反复叮嘱',
+            '含蓄型': '语气要含蓄内敛，情感不直接表达',
+            '直白型': '语气要直白真诚，直接表达关心',
+            '幽默型': '语气要幽默风趣，带点玩笑但充满爱意'
+        }
+
+        tone_prompt = tone_prompts.get(tone_style, '语气要温馨感人')
+
+        # 构建综合提示词，模拟家人角色
+        prompt = f'''现在你扮演用户的{family_role}，用{dialect}方言风格给用户写一段问候语。
+用户家乡：{hometown}
+用户当前所在城市：{current_city or '外地'}
+你对用户的称呼：{nickname}
+{tone_prompt}
+
+要求：
+- 以"{family_role}"的口吻说话
+- 用{dialect}方言风格，口语化
+- 体现家人的关怀和牵挂
+- 可以叮嘱吃饭、穿衣、休息等日常生活
+- 30-50 字左右'''
+
+        result = self._call_api(prompt)
+
+        if result:
+            result = result.strip().strip('"\'""')
+            return {
+                'content': result,
+                'category': '家人问候',
+                'dialect': dialect,
+                'location': hometown,
+                'family_role': family_role,
+                'nickname': nickname,
+                'tone_style': tone_style
+            }
+        return None
+
     def generate_batch(self, location: str, categories: List[str] = None) -> List[dict]:
         """
         批量生成多个分类的思乡话语

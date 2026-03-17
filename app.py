@@ -6,6 +6,8 @@ from routes.checkin import checkin_bp
 from routes.dashboard import dashboard_bp
 from routes.quotes import quotes_bp
 from routes.ai_hometown import ai_hometown_bp
+from routes.badges import badges_bp
+from routes.api import api_bp
 
 def create_app():
     app = Flask(__name__)
@@ -18,6 +20,8 @@ def create_app():
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(quotes_bp)
     app.register_blueprint(ai_hometown_bp)
+    app.register_blueprint(badges_bp)
+    app.register_blueprint(api_bp)
 
     # 错误处理
     @app.errorhandler(404)

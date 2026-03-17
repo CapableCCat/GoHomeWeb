@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from models.storage import UserStorage, CheckinStorage
 
 
@@ -13,6 +13,10 @@ class User:
         self.current_city = user_data.get('current_city', '')
         self.leave_home_date = user_data.get('leave_home_date')
         self.created_at = user_data.get('created_at')
+        # 家人配置字段
+        self.family_role = user_data.get('family_role', '妈妈')
+        self.nickname = user_data.get('nickname', '')
+        self.tone_style = user_data.get('tone_style', '唠叨型')
 
     def get_days_away_from_home(self):
         """计算离家天数"""
@@ -116,36 +120,8 @@ class User:
             'hometown': self.hometown,
             'current_city': self.current_city,
             'leave_home_date': self.leave_home_date,
-            'created_at': self.created_at
+            'created_at': self.created_at,
+            'family_role': self.family_role,
+            'nickname': self.nickname,
+            'tone_style': self.tone_style
         }
-
-
-# 修复：需要导入 timedelta
-from datetime import timedelta
-
-# 重新定义 _calculate_current_streak 方法
-def _calculate_current_streak_fixed(self, dates):
-    """计算当前连续签到天数"""
-    if not dates:
-        return 0
-
-    today = datetime.now().date()
-    expected_date = today
-
-    streak = 0
-    for date_str in sorted(dates, reverse=True):
-        try:
-            date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            if date == expected_date:
-                streak += 1
-                expected_date = date - timedelta(days=1)
-            elif date == expected_date - timedelta(days=1):
-                expected_date = date - timedelta(days=1)
-                streak += 1
-            else:
-                break
-        except:
-            continue
-    return streak
-
-User._calculate_current_streak = _calculate_current_streak_fixed
