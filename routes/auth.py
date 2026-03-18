@@ -7,24 +7,6 @@ from models.storage import UserStorage
 auth_bp = Blueprint('auth', __name__)
 
 
-@auth_bp.route('/')
-def index():
-    """首页 - 重定向到 API 文档"""
-    return jsonify({
-        'success': True,
-        'message': 'HomeSignin API',
-        'endpoints': {
-            'login': '/api/login',
-            'register': '/api/register',
-            'logout': '/api/logout',
-            'dashboard': '/api/dashboard',
-            'checkin': '/api/checkin',
-            'badges': '/api/badges',
-            'quotes': '/api/quotes'
-        }
-    })
-
-
 @auth_bp.route('/register', methods=['POST'])
 def register():
     """用户注册 API"""
