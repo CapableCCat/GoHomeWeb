@@ -9,7 +9,6 @@ from routes.dashboard import dashboard_bp
 from routes.quotes import quotes_bp
 from routes.ai_hometown import ai_hometown_bp
 from routes.badges import badges_bp
-from routes.api import api_bp
 import os
 
 
@@ -30,14 +29,13 @@ def create_app():
         'https://*.github.io'
     ])
 
-    # 注册蓝图
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(checkin_bp)
-    app.register_blueprint(dashboard_bp)
-    app.register_blueprint(quotes_bp)
-    app.register_blueprint(ai_hometown_bp)
-    app.register_blueprint(badges_bp)
-    app.register_blueprint(api_bp)
+    # 注册蓝图，统一使用 /api 前缀
+    app.register_blueprint(auth_bp, url_prefix='/api')
+    app.register_blueprint(checkin_bp, url_prefix='/api')
+    app.register_blueprint(dashboard_bp, url_prefix='/api')
+    app.register_blueprint(quotes_bp, url_prefix='/api')
+    app.register_blueprint(ai_hometown_bp, url_prefix='/api')
+    app.register_blueprint(badges_bp, url_prefix='/api')
 
     # 错误处理（改为 JSON 响应，适配前后端分离）
     @app.errorhandler(404)
