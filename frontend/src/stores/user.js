@@ -10,6 +10,9 @@ export const useUserStore = defineStore('user', {
     family_role: '妈妈',
     nickname: '',
     tone_style: '唠叨型',
+    activeFrame: 'transparent', // 新增：当前佩戴头像框颜色
+    activeTitle: '',            // 新增：当前佩戴称号
+    points: 1250,               // 新增：用户积分
     isAuthenticated: false
   }),
 

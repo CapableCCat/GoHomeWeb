@@ -3,6 +3,10 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Checkin from '../views/Checkin.vue'
+import Calendar from '../views/Calendar.vue'
+import Stats from '../views/Stats.vue'
+import Shop from '../views/Shop.vue'
+import Inventory from '../views/Inventory.vue'
 import Badges from '../views/Badges.vue'
 import Profile from '../views/Profile.vue'
 
@@ -31,6 +35,30 @@ const routes = [
     path: '/checkin',
     name: 'Checkin',
     component: Checkin,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/calendar',
+    name: 'Calendar',
+    component: Calendar,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/stats',
+    name: 'Stats',
+    component: Stats,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/store',
+    name: 'Shop',
+    component: Shop,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/inventory',
+    name: 'Inventory',
+    component: Inventory,
     meta: { requiresAuth: true }
   },
   {
