@@ -24,8 +24,7 @@ def create_app():
 
     # 配置 CORS，允许前端跨域访问
     CORS(app, supports_credentials=True, origins=[
-        'http://localhost:3000',
-        'http://localhost:3001',
+        'http://localhost:3100',
         'https://*.github.io'
     ])
 
